@@ -1,8 +1,125 @@
 import express from "express";
 import TaskModel from "../model/task.model.js";
 import UserModel from "../model/user.model.js";
+import bcrypt from "bcrypt";
+
 
 const userRoute = express.Router();
+
+const saltRounds = 10
+
+userRoute.post("/sign-up", async (req, res) => {
+  try {
+
+    //capturando a senha do meu req.body
+    const { password } = req.body;
+
+    //checando se a senha Existe || se a senha passou nos pré-requisitos
+    if (!password ||
+        !password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[$*&@#!])[0-9a-zA-Z$*&@#!]{8,}$/)
+    ){
+      return res
+        .status(400)
+        .json({ msg: "Senha não tem os requisitos mínimos de segurança"})
+    }
+
+    //gerar o salt
+    const salt = await bcrypt.genSalt(saltRounds); //10
+
+    //hashear a senha
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    //criar o usuario com a senha hasheada
+    const newUser = await UserModel.create({
+      ...req.body,
+      passwordHash: hashedPassword,
+    });
+
+    //deletar a propriedade passwordHash do obj
+    delete user._doc.passwordHash;
+
+    return res. status(201).json(newUser)
+    
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(error.errors)
+  }
+});
+
+
+//rota de login
+userRoute.post("/login", async (req, res) => {
+  try {
+    //capturando o email e o password do req.body
+    const { email, password} = req.body;
+
+    //achar o usuario no banco de dados pelo email
+    const user = await UserModel.findOne({ email: email});
+
+    //checar se o email existe no meu banco de dados
+    if (!user) {
+      return res.status(400).json({msg: "Usuario não cadastrado"});
+    }
+
+    //comparar a senha que o usuario enviou com o hash da senha que está no banco de dados
+    //bcrypt tem um étodo chamado .compare(senha que o user enviou, senha hasheada)
+    if (await bcrypt.compare(password, user.passwordHash)){
+      delete user._doc.passwordHash;
+      //se a comparação for true, cai dentro desse if => as senhas sao iguais
+      //devolver token de acesso ao usuário
+
+      //criar token de acesso para o usuário logado
+      const token = genereteToken(user);
+
+      return res.status(200).json({
+        user: user,
+        token: token,
+      });
+    } else {
+      //as senha são diferentes!!
+      return res.status(401).json({ msg: "Email ou senha inválido"})
+    }
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(error.errors);
+  }
+})
+
+
+//rota PROFILE
+userRoute.get("/profile", isAuth, attachCurrentUser, async (req, res) => {
+  try {
+    
+    //reqcurrentUser -> veio do middle attachCurrentUser
+
+    return res.status(200).json(req.currentUser);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(error.errors);
+  }
+});
+
+
+userRoute.get("/all-users",isAuth, isAdmin, async (req, res)){
+  try {
+    
+
+    return res.status().json();
+
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(error.errors);
+  }
+}
+
+
+
+
+
+
+
 
 //CREATE - MONGODB
 userRoute.post("/create-user", async (req, res) => {
@@ -20,24 +137,24 @@ userRoute.post("/create-user", async (req, res) => {
 });
 
 //GET ALL USERS
-userRoute.get("/all-users", async (req, res) => {
-  try {
-    // find vazio -> todas as ocorrencias
-    // projections -> defini os campos que vão ser retornados
-    // sort() -> ordenada o retorno dos dados
-    // limit() -> define quantas ocorrencias serão retornadas
-    const users = await UserModel.find({}, { __v: 0, updatedAt: 0 })
-      .sort({
-        age: 1,
-      })
-      .limit(100);
+// userRoute.get("/all-users", async (req, res) => {
+//   try {
+//     // find vazio -> todas as ocorrencias
+//     // projections -> defini os campos que vão ser retornados
+//     // sort() -> ordenada o retorno dos dados
+//     // limit() -> define quantas ocorrencias serão retornadas
+//     const users = await UserModel.find({}, { __v: 0, updatedAt: 0 })
+//       .sort({
+//         age: 1,
+//       })
+//       .limit(100);
 
-    return res.status(200).json(users);
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json(error.errors);
-  }
-});
+//     return res.status(200).json(users);
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json(error.errors);
+//   }
+// });
 
 //GET ONE USER
 userRoute.get("/oneUser/:id", async (req, res) => {
