@@ -2,6 +2,10 @@ import express from "express";
 import TaskModel from "../model/task.model.js";
 import UserModel from "../model/user.model.js";
 import bcrypt from "bcrypt";
+import generateToken from "../config/jwt.config.js";
+import isAuth from "../middlewares/isAuth.js";
+import attachCurrentUser from "../middlewares/attachCurrentUser.js";
+import isAdmin from "../middlewares/isAdmin.js";
 
 
 const userRoute = express.Router();
@@ -101,18 +105,18 @@ userRoute.get("/profile", isAuth, attachCurrentUser, async (req, res) => {
 });
 
 
-userRoute.get("/all-users",isAuth, isAdmin, async (req, res)){
+userRoute.get("/all-users", isAuth, isAdmin, attachCurrentUser, async (req, res) => {
   try {
     
+    const users = await UserModel.find({}, { passwordHash: 0 });
 
-    return res.status().json();
-
+    return res.status(200).json(users);
 
   } catch (error) {
     console.error(error);
     return res.status(500).json(error.errors);
   }
-}
+});
 
 
 

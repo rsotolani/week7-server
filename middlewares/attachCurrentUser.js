@@ -1,7 +1,7 @@
 //middleware
 //next entrega a resultado da funcão para o próximo componente
 
-import UserModel from "../model/user.model";
+import UserModel from "../model/user.model.js";
 
 
 async function attachCurrentUser(req, res, next) {
@@ -25,4 +25,4 @@ async function attachCurrentUser(req, res, next) {
     }
 }
 
-export default attchCurrentUser;
+export default attachCurrentUser;
